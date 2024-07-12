@@ -1,0 +1,27 @@
+syntax = "proto3";
+package qiita;
+option go_package = "github.com/hiro-env/grpcaggregator/pkg/qiita";
+
+// Qiitaサービス定義
+service QiitaService {
+  // 検索ワードに基づいて記事を検索するRPC
+  rpc SearchArticles(SearchRequest) returns (SearchResponse);
+}
+
+// 検索リクエスト
+message SearchRequest {
+  string query = 1;  // ユーザーからの検索ワード
+}
+
+// 検索レスポンス
+message SearchResponse {
+  repeated Article articles = 1;  // 記事のリスト
+}
+
+// 記事情報
+message Article {
+  string title = 1;        // 記事のタイトル
+  string author = 2;       // 著者名
+  string url = 3;          // 記事のURL
+  string published_at = 4; // 発行日
+}
