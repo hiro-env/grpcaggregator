@@ -14,8 +14,8 @@ spec:
     spec:
       containers:
         - name: grpc-server
-          image: grpc-server:latest
-          imagePullPolicy: Never
+          image: asia-northeast1-docker.pkg.dev/grpcaggregator/docker-repo/grpc-server:latest # Artifact Registry 本来は環境変数やSecretを利用する方がベター
+          imagePullPolicy: Always
           ports:
             - containerPort: 50051
 ---
@@ -47,8 +47,8 @@ spec:
     spec:
       containers:
         - name: grpc-gateway
-          image: grpc-gateway:latest
-          imagePullPolicy: Never
+          image: asia-northeast1-docker.pkg.dev/grpcaggregator/docker-repo/grpc-gateway:latest # Artifact Registry 本来は環境変数やSecretを利用する方がベター
+          imagePullPolicy: Always
           ports:
             - containerPort: 8080
 ---
@@ -61,6 +61,6 @@ spec:
     app: grpc-gateway
   ports:
     - protocol: TCP
-      port: 8080
+      port: 80 # HTTPのシステムポートに変更しておく
       targetPort: 8080
-  type: NodePort
+  type: LoadBalancer
