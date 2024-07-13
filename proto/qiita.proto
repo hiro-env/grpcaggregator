@@ -1,11 +1,17 @@
 syntax = "proto3";
 package qiita;
+
+import "google/api/annotations.proto";
+
 option go_package = "github.com/hiro-env/grpcaggregator/pkg/qiita";
 
-// Qiitaサービス定義
 service QiitaService {
   // 検索ワードに基づいて記事を検索するRPC
-  rpc SearchArticles(SearchRequest) returns (SearchResponse);
+  rpc SearchArticles(SearchRequest) returns (SearchResponse) {
+    option (google.api.http) = {
+      get: "/qiita/articles"
+    };
+  }
 }
 
 // 検索リクエスト
