@@ -1,0 +1,72 @@
+# This workflow will build a docker container, publish it to Google Container Registry, and deploy it to GKE when there is a push to the "main" branch.
+#
+# To configure this workflow:
+#
+# 1. Ensure that your repository contains the necessary configuration for your Google Kubernetes Engine cluster, including deployment.yml, kustomization.yml, service.yml, etc.
+#
+# 2. Create and configure a Workload Identity Provider for GitHub (https://github.com/google-github-actions/auth#setting-up-workload-identity-federation)
+#
+# 3. Change the values for the GAR_LOCATION, GKE_ZONE, GKE_CLUSTER, IMAGE, REPOSITORY and DEPLOYMENT_NAME environment variables (below).
+#
+# For more support on how to run the workflow, please visit https://github.com/google-github-actions/setup-gcloud/tree/master/example-workflows/gke-kustomize
+
+name: Build and Deploy to GKE
+
+on:
+  push:
+    branches: [gke]
+  pull_request:
+    branches: [gke]
+
+env:
+  GKE_CLUSTER: ${{ secrets.GKE_CLUSTER }}
+  GKE_ZONE: ${{ secrets.GKE_ZONE }}
+  DOCKER_REPO: docker-repo
+  GRPC_SERVER_IMAGE: grpc-server
+  GRPC_GATEWAY_IMAGE: grpc-gateway
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: "read"
+      id-token: "write"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Authenticate to Google Cloud
+        uses: "google-github-actions/auth@v1"
+        with:
+          workload_identity_provider: "projects/${{ secrets.GCP_PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-provider"
+          service_account: "${{ secrets.GCP_SA_EMAIL }}"
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+
+      - name: Configure Docker
+        run: gcloud auth configure-docker asia-northeast1-docker.pkg.dev
+
+      - name: Build and Push gRPC Server Image
+        run: |
+          docker build -t asia-northeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/$DOCKER_REPO/$GRPC_SERVER_IMAGE:latest ./cmd/grpc-server
+          docker push asia-northeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/$DOCKER_REPO/$GRPC_SERVER_IMAGE:latest
+
+      - name: Build and Push gRPC Gateway Image
+        run: |
+          docker build -t asia-northeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/$DOCKER_REPO/$GRPC_GATEWAY_IMAGE:latest ./cmd/gateway
+          docker push asia-northeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/$DOCKER_REPO/$GRPC_GATEWAY_IMAGE:latest
+
+      - name: Get GKE Credentials
+        run: gcloud container clusters get-credentials $GKE_CLUSTER --zone $GKE_ZONE --project ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Deploy to GKE
+        run: |
+          kubectl rollout restart deployment grpc-server
+          kubectl rollout restart deployment grpc-gateway
+
+      - name: Verify deployments
+        run: |
+          kubectl rollout status deployment/grpc-server
+          kubectl rollout status deployment/grpc-gateway
