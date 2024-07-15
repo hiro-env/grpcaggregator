@@ -11,10 +11,15 @@ type QiitaService struct {
 }
 
 func (s *QiitaService) SearchArticles(ctx context.Context, req *qiita.SearchRequest) (*qiita.SearchResponse, error) {
+	query := req.Query
+	if query == "" {
+		// TODO
+	}
+
 	return &qiita.SearchResponse{
 		Articles: []*qiita.Article{
 			{
-				Title:       "サンプル記事CI/CD",
+				Title:       query,
 				Author:      "サンプル著者CI/CD",
 				Url:         "https://qiita.com",
 				PublishedAt: "2023-01-01T00:00:00Z",

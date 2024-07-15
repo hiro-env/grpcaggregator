@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: grpc-server # サービスディスカバリーで使用されるDNS名になる（grpc-gatewayから接続する際に使われる)
+  name: grpc-server
 spec:
   replicas: 1
   selector:
@@ -22,7 +22,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: grpc-server
+  name: grpc-server # サービスディスカバリーで使用されるDNS名になる（grpc-gatewayから接続する際に使われる)
 spec:
   selector:
     app: grpc-server
