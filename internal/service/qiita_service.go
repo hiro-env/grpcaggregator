@@ -14,8 +14,8 @@ func (s *QiitaService) SearchArticles(ctx context.Context, req *qiita.SearchRequ
 	return &qiita.SearchResponse{
 		Articles: []*qiita.Article{
 			{
-				Title:       "サンプル記事",
-				Author:      "サンプル著者",
+				Title:       "サンプル記事CI/CD",
+				Author:      "サンプル著者CI/CD",
 				Url:         "https://qiita.com",
 				PublishedAt: "2023-01-01T00:00:00Z",
 			},
