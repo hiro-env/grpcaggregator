@@ -24,6 +24,7 @@ env:
   DOCKER_REPO: docker-repo
   GRPC_SERVER_IMAGE: grpc-server
   GRPC_GATEWAY_IMAGE: grpc-gateway
+  USE_GKE_GCLOUD_AUTH_PLUGIN: True
 
 jobs:
   build-and-deploy:
@@ -58,8 +59,21 @@ jobs:
           docker build -t asia-northeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/$DOCKER_REPO/$GRPC_GATEWAY_IMAGE:latest -f ./cmd/gateway/Dockerfile .
           docker push asia-northeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/$DOCKER_REPO/$GRPC_GATEWAY_IMAGE:latest
 
+      ## gke-gcloud-auth-pluginをインストール
+      - name: Install GKE Auth Plugin
+        run: |
+          gcloud components install gke-gcloud-auth-plugin
+          echo "export USE_GKE_GCLOUD_AUTH_PLUGIN=True" >> $GITHUB_ENV
+
       - name: Get GKE Credentials
         run: gcloud container clusters get-credentials $GKE_CLUSTER --zone $GKE_ZONE --project ${{ secrets.GCP_PROJECT_ID }}
+
+      ## デバッグ用
+      - name: Check gcloud version
+        run: gcloud version
+
+      - name: Check kubectl version
+        run: kubectl version --client
 
       - name: Deploy to GKE
         run: |
