@@ -50,12 +50,12 @@ jobs:
 
       - name: Build and Push gRPC Server Image
         run: |
-          docker build -t asia-northeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/$DOCKER_REPO/$GRPC_SERVER_IMAGE:latest -f ./cmd/grpc-server/Dockerfile
+          docker build -t asia-northeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/$DOCKER_REPO/$GRPC_SERVER_IMAGE:latest -f ./cmd/grpc-server/Dockerfile .
           docker push asia-northeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/$DOCKER_REPO/$GRPC_SERVER_IMAGE:latest
 
       - name: Build and Push gRPC Gateway Image
         run: |
-          docker build -t asia-northeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/$DOCKER_REPO/$GRPC_GATEWAY_IMAGE:latest -f ./cmd/gateway/Dockerfile
+          docker build -t asia-northeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/$DOCKER_REPO/$GRPC_GATEWAY_IMAGE:latest -f ./cmd/gateway/Dockerfile .
           docker push asia-northeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/$DOCKER_REPO/$GRPC_GATEWAY_IMAGE:latest
 
       - name: Get GKE Credentials
