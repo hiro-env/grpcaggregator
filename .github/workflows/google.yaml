@@ -77,6 +77,7 @@ jobs:
 
           # Install protoc-gen-openapiv2
           go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@latest
+          export PATH=$PATH:$HOME/go/bin
 
           # Download necessary Google API proto files
           mkdir -p google/api
@@ -88,9 +89,9 @@ jobs:
             filename=$(basename "$proto" .proto)
             # Generate OpenAPI spec from Proto file
             protoc -I. \
-              -I$(go env GOPATH)/pkg/mod \
-              -I$(go env GOPATH)/pkg/mod/github.com/grpc-ecosystem/grpc-gateway@v2.20.0+incompatible \
-              -I$(go env GOPATH)/pkg/mod/github.com/grpc-ecosystem/grpc-gateway@v2.20.0+incompatible/third_party/googleapis \
+              -I$GOPATH/pkg/mod \
+              -I$GOPATH/pkg/mod/github.com/grpc-ecosystem/grpc-gateway@v2.20.0+incompatible \
+              -I$GOPATH/pkg/mod/github.com/grpc-ecosystem/grpc-gateway@v2.20.0+incompatible/third_party/googleapis \
               --openapiv2_out=./gen \
               --openapiv2_opt=logtostderr=true \
               "$proto"
