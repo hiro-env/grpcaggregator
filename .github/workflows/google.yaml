@@ -53,6 +53,9 @@ jobs:
             echo "proto_changed=true" >> $GITHUB_OUTPUT
             echo "changed_files=$CHANGED_PROTOS" >> $GITHUB_OUTPUT
           fi
+        outputs:
+          proto_changed: ${{ steps.check_files.outputs.proto_changed }}
+          changed_files: ${{ steps.check_files.outputs.changed_files }}
 
       - name: Debug Check Files Output
         run: |

@@ -31,3 +31,5 @@ message Article {
   string url = 3;          // 記事のURL
   string published_at = 4; // 発行日
 }
+
+// swagger用テスト変更
