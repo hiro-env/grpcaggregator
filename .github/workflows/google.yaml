@@ -64,12 +64,30 @@ jobs:
       - name: Generate OpenAPI Spec
         if: steps.check_files.outputs.proto_changed == 'true'
         run: |
+          # Install protoc
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+
+          # Install protoc-gen-openapiv2
+          go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@latest
+
           mkdir -p gen
           for proto in ${{ steps.check_files.outputs.changed_files }}; do
             filename=$(basename "$proto" .proto)
-            openapi-generator-cli generate -i $proto -g openapi -o ./gen/$filename
-            mv ./gen/$filename/openapi.json ./gen/$filename.swagger.json
-            rm -rf ./gen/$filename
+            # Generate OpenAPI spec from Proto file
+            protoc -I. \
+              --openapiv2_out=./gen \
+              --openapiv2_opt=logtostderr=true \
+              "$proto"
+
+            # Now use openapi-generator-cli with the generated OpenAPI spec
+            openapi-generator-cli generate \
+              -i ./gen/${filename}.swagger.json \
+              -g openapi \
+              -o ./gen/${filename}
+
+            mv ./gen/${filename}/openapi.json ./gen/${filename}.swagger.json
+            rm -rf ./gen/${filename}
           done
 
       - name: Commit and push OpenAPI specs
