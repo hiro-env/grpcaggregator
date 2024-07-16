@@ -81,6 +81,9 @@ jobs:
           # Install protoc-gen-openapiv2
           go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@latest
 
+          # Run go mod tidy to ensure all dependencies are downloaded
+          go mod tidy
+
           # Create necessary directories with sudo
           sudo mkdir -p /gen
           sudo chown $USER:$USER /gen
@@ -96,9 +99,9 @@ jobs:
             GOPATH=$(go env GOPATH)
             # Generate OpenAPI spec from Proto file
             protoc -I. \
-              -I$GOPATH/pkg/mod \
               -I$GOPATH/pkg/mod/github.com/grpc-ecosystem/grpc-gateway@v2.20.0+incompatible \
               -I$GOPATH/pkg/mod/github.com/grpc-ecosystem/grpc-gateway@v2.20.0+incompatible/third_party/googleapis \
+              -Igoogle/api \
               --openapiv2_out=/gen \
               --openapiv2_opt=logtostderr=true \
               "$proto"
