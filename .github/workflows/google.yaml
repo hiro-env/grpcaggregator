@@ -54,6 +54,11 @@ jobs:
             echo "changed_files=$CHANGED_PROTOS" >> $GITHUB_OUTPUT
           fi
 
+      - name: Debug Check Files Output
+        run: |
+          echo "proto_changed=${{ steps.check_files.outputs.proto_changed }}"
+          echo "changed_files=${{ steps.check_files.outputs.changed_files }}"
+
       - name: Generate OpenAPI Spec
         if: steps.check_files.outputs.proto_changed == 'true'
         run: |
