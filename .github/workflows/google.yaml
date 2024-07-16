@@ -97,25 +97,12 @@ jobs:
           sudo mkdir -p /gen
           sudo chown $USER:$USER /gen
 
-          # Download necessary Google API proto files
-          mkdir -p google/api
-          curl -sSL https://raw.githubusercontent.com/googleapis/googleapis/master/google/api/annotations.proto > google/api/annotations.proto
-          curl -sSL https://raw.githubusercontent.com/googleapis/googleapis/master/google/api/http.proto > google/api/http.proto
-
-          # Ensure the third_party/googleapis directory exists
-          mkdir -p $GOPATH/pkg/mod/github.com/grpc-ecosystem/grpc-gateway@v2.20.0+incompatible/third_party/googleapis/google/api
-          cp google/api/annotations.proto $GOPATH/pkg/mod/github.com/grpc-ecosystem/grpc-gateway@v2.20.0+incompatible/third_party/googleapis/google/api
-          cp google/api/http.proto $GOPATH/pkg/mod/github.com/grpc-ecosystem/grpc-gateway@v2.20.0+incompatible/third_party/googleapis/google/api
-
           for proto in ${{ env.changed_files }}; do
             filename=$(basename "$proto" .proto)
-            # Get GOPATH
-            GOPATH=$(go env GOPATH)
             # Generate OpenAPI spec from Proto file
             protoc -I. \
               -I$GOPATH/pkg/mod/github.com/grpc-ecosystem/grpc-gateway@v2.20.0+incompatible \
-              -I$GOPATH/pkg/mod/github.com/grpc-ecosystem/grpc-gateway@v2.20.0+incompatible/third_party/googleapis \
-              -Igoogle/api \
+              -Ithird_party/googleapis \
               --openapiv2_out=/gen \
               --openapiv2_opt=logtostderr=true \
               "$proto"
