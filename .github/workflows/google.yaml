@@ -71,21 +71,29 @@ jobs:
           # Install protoc-gen-openapiv2
           go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@latest
 
+          # Download necessary Google API proto files
+          mkdir -p google/api
+          curl -sSL https://raw.githubusercontent.com/googleapis/googleapis/master/google/api/annotations.proto > google/api/annotations.proto
+          curl -sSL https://raw.githubusercontent.com/googleapis/googleapis/master/google/api/http.proto > google/api/http.proto
+
           mkdir -p gen
           for proto in ${{ steps.check_files.outputs.changed_files }}; do
             filename=$(basename "$proto" .proto)
             # Generate OpenAPI spec from Proto file
             protoc -I. \
+              -I$(go env GOPATH)/src \
+              -I$(go env GOPATH)/src/github.com/grpc-ecosystem/grpc-gateway \
+              -I$(go env GOPATH)/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis \
               --openapiv2_out=./gen \
               --openapiv2_opt=logtostderr=true \
               "$proto"
-
+            
             # Now use openapi-generator-cli with the generated OpenAPI spec
             openapi-generator-cli generate \
               -i ./gen/${filename}.swagger.json \
               -g openapi \
               -o ./gen/${filename}
-
+            
             mv ./gen/${filename}/openapi.json ./gen/${filename}.swagger.json
             rm -rf ./gen/${filename}
           done
