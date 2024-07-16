@@ -101,7 +101,6 @@ jobs:
             filename=$(basename "$proto" .proto)
             # Generate OpenAPI spec from Proto file
             protoc -I. \
-              -I$GOPATH/pkg/mod/github.com/grpc-ecosystem/grpc-gateway@v2.20.0+incompatible \
               -Ithird_party/googleapis \
               --openapiv2_out=/gen \
               --openapiv2_opt=logtostderr=true \
