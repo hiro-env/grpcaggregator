@@ -52,17 +52,17 @@ jobs:
         run: |
           CHANGED_PROTOS=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -E '^proto/.*\.proto$' || true)
           if [ -n "$CHANGED_PROTOS" ]; then
-            echo "proto_changed=true" >> $GITHUB_OUTPUT
-            echo "changed_files=$CHANGED_PROTOS" >> $GITHUB_OUTPUT
+            echo "proto_changed=true" >> $GITHUB_ENV
+            echo "changed_files=$CHANGED_PROTOS" >> $GITHUB_ENV
           fi
 
       - name: Debug Check Files Output
         run: |
-          echo "proto_changed=${{ steps.check_files.outputs.proto_changed }}"
-          echo "changed_files=${{ steps.check_files.outputs.changed_files }}"
+          echo "proto_changed=${{ env.proto_changed }}"
+          echo "changed_files=${{ env.changed_files }}"
 
       - name: Generate OpenAPI Spec
-        if: steps.check_files.outputs.proto_changed == 'true'
+        if: env.proto_changed == 'true'
         run: |
           # Install protoc
           sudo apt-get update
@@ -85,7 +85,7 @@ jobs:
           curl -sSL https://raw.githubusercontent.com/googleapis/googleapis/master/google/api/http.proto > google/api/http.proto
 
           mkdir -p gen
-          for proto in ${{ steps.check_files.outputs.changed_files }}; do
+          for proto in ${{ env.changed_files }}; do
             filename=$(basename "$proto" .proto)
             # Generate OpenAPI spec from Proto file
             protoc -I. \
@@ -95,19 +95,24 @@ jobs:
               --openapiv2_out=./gen \
               --openapiv2_opt=logtostderr=true \
               "$proto"
-            
-            # Now use openapi-generator-cli with the generated OpenAPI spec
-            openapi-generator-cli generate \
-              -i ./gen/${filename}.swagger.json \
-              -g openapi \
-              -o ./gen/${filename}
-            
-            mv ./gen/${filename}/openapi.json ./gen/${filename}.swagger.json
-            rm -rf ./gen/${filename}
+
+            if [ -f "./gen/${filename}.swagger.json" ]; then
+              # Now use openapi-generator-cli with the generated OpenAPI spec
+              openapi-generator-cli generate \
+                -i ./gen/${filename}.swagger.json \
+                -g openapi \
+                -o ./gen/${filename}
+              
+              mv ./gen/${filename}/openapi.json ./gen/${filename}.swagger.json
+              rm -rf ./gen/${filename}
+            else
+              echo "Failed to generate ./gen/${filename}.swagger.json"
+              exit 1
+            fi
           done
 
       - name: Commit and push OpenAPI specs
-        if: steps.check_files.outputs.proto_changed == 'true'
+        if: env.proto_changed == 'true'
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
