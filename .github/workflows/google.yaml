@@ -74,17 +74,21 @@ jobs:
           # Set GOPATH
           echo "GOPATH=$HOME/go" >> $GITHUB_ENV
           echo "$HOME/go/bin" >> $GITHUB_PATH
+          export GOPATH=$HOME/go
+          export PATH=$PATH:$HOME/go/bin
+          export GO111MODULE=on
 
           # Install protoc-gen-openapiv2
           go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@latest
-          export PATH=$PATH:$HOME/go/bin
+
+          # Create necessary directories
+          mkdir -p /gen
 
           # Download necessary Google API proto files
           mkdir -p google/api
           curl -sSL https://raw.githubusercontent.com/googleapis/googleapis/master/google/api/annotations.proto > google/api/annotations.proto
           curl -sSL https://raw.githubusercontent.com/googleapis/googleapis/master/google/api/http.proto > google/api/http.proto
 
-          mkdir -p gen
           for proto in ${{ env.changed_files }}; do
             filename=$(basename "$proto" .proto)
             # Generate OpenAPI spec from Proto file
@@ -92,21 +96,21 @@ jobs:
               -I$GOPATH/pkg/mod \
               -I$GOPATH/pkg/mod/github.com/grpc-ecosystem/grpc-gateway@v2.20.0+incompatible \
               -I$GOPATH/pkg/mod/github.com/grpc-ecosystem/grpc-gateway@v2.20.0+incompatible/third_party/googleapis \
-              --openapiv2_out=./gen \
+              --openapiv2_out=/gen \
               --openapiv2_opt=logtostderr=true \
               "$proto"
 
-            if [ -f "./gen/${filename}.swagger.json" ]; then
+            if [ -f "/gen/${filename}.swagger.json" ]; then
               # Now use openapi-generator-cli with the generated OpenAPI spec
               openapi-generator-cli generate \
-                -i ./gen/${filename}.swagger.json \
+                -i /gen/${filename}.swagger.json \
                 -g openapi \
-                -o ./gen/${filename}
+                -o /gen/${filename}
               
-              mv ./gen/${filename}/openapi.json ./gen/${filename}.swagger.json
-              rm -rf ./gen/${filename}
+              mv /gen/${filename}/openapi.json /gen/${filename}.swagger.json
+              rm -rf /gen/${filename}
             else
-              echo "Failed to generate ./gen/${filename}.swagger.json"
+              echo "Failed to generate /gen/${filename}.swagger.json"
               exit 1
             fi
           done
@@ -116,7 +120,7 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add gen/*.swagger.json
+          git add /gen/*.swagger.json
           git commit -m "Update OpenAPI json file" || echo "No changes to commit"
           git push
 
