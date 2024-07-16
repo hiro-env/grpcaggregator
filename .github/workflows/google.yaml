@@ -84,10 +84,6 @@ jobs:
           curl -sSL https://raw.githubusercontent.com/googleapis/googleapis/master/google/api/annotations.proto > google/api/annotations.proto
           curl -sSL https://raw.githubusercontent.com/googleapis/googleapis/master/google/api/http.proto > google/api/http.proto
 
-          # Ensure directories exist
-          mkdir -p $GOPATH/pkg/mod
-          mkdir -p $GOPATH/pkg/mod/github.com/grpc-ecosystem/grpc-gateway@v2.20.0+incompatible/third_party/googleapis
-
           mkdir -p gen
           for proto in ${{ env.changed_files }}; do
             filename=$(basename "$proto" .proto)
@@ -100,17 +96,17 @@ jobs:
               --openapiv2_opt=logtostderr=true \
               "$proto"
 
-            if [ -f "./gen/${filename}.json" ]; then
+            if [ -f "./gen/${filename}.swagger.json" ]; then
               # Now use openapi-generator-cli with the generated OpenAPI spec
               openapi-generator-cli generate \
-                -i ./gen/${filename}.json \
+                -i ./gen/${filename}.swagger.json \
                 -g openapi \
                 -o ./gen/${filename}
               
               mv ./gen/${filename}/openapi.json ./gen/${filename}.swagger.json
               rm -rf ./gen/${filename}
             else
-              echo "Failed to generate ./gen/${filename}.json"
+              echo "Failed to generate ./gen/${filename}.swagger.json"
               exit 1
             fi
           done
