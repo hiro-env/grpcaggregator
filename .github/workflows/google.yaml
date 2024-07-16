@@ -96,17 +96,17 @@ jobs:
               --openapiv2_opt=logtostderr=true \
               "$proto"
 
-            if [ -f "./gen/${filename}.swagger.json" ]; then
+            if [ -f "./gen/${filename}.json" ]; then
               # Now use openapi-generator-cli with the generated OpenAPI spec
               openapi-generator-cli generate \
-                -i ./gen/${filename}.swagger.json \
+                -i ./gen/${filename}.json \
                 -g openapi \
                 -o ./gen/${filename}
               
               mv ./gen/${filename}/openapi.json ./gen/${filename}.swagger.json
               rm -rf ./gen/${filename}
             else
-              echo "Failed to generate ./gen/${filename}.swagger.json"
+              echo "Failed to generate ./gen/${filename}.json"
               exit 1
             fi
           done

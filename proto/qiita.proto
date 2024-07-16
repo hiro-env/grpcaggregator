@@ -32,4 +32,5 @@ message Article {
   string published_at = 4; // 発行日
 }
 
+
 // swagger用テスト変更です
