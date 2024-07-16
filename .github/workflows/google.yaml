@@ -61,9 +61,13 @@ jobs:
           echo "proto_changed=${{ env.proto_changed }}"
           echo "changed_files=${{ env.changed_files }}"
 
+      - name: Uninstall old Go
+        run: |
+          sudo apt-get remove -y golang-go
+          sudo apt-get remove -y golang-src
+
       - name: Install Go
         run: |
-          sudo rm -rf /usr/local/go
           curl -LO https://golang.org/dl/go1.22.0.linux-amd64.tar.gz
           sudo tar -C /usr/local -xzf go1.22.0.linux-amd64.tar.gz
           echo "export PATH=$PATH:/usr/local/go/bin" >> $GITHUB_ENV
