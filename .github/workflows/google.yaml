@@ -92,6 +92,8 @@ jobs:
 
           for proto in ${{ env.changed_files }}; do
             filename=$(basename "$proto" .proto)
+            # Get GOPATH
+            GOPATH=$(go env GOPATH)
             # Generate OpenAPI spec from Proto file
             protoc -I. \
               -I$GOPATH/pkg/mod \
