@@ -68,6 +68,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y protobuf-compiler
 
+          # Install go
+          sudo apt-get install -y golang-go
+
+          # Set GOPATH
+          echo "GOPATH=$HOME/go" >> $GITHUB_ENV
+          echo "$HOME/go/bin" >> $GITHUB_PATH
+
           # Install protoc-gen-openapiv2
           go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@latest
 
@@ -81,9 +88,9 @@ jobs:
             filename=$(basename "$proto" .proto)
             # Generate OpenAPI spec from Proto file
             protoc -I. \
-              -I$(go env GOPATH)/src \
-              -I$(go env GOPATH)/src/github.com/grpc-ecosystem/grpc-gateway \
-              -I$(go env GOPATH)/src/github.com/grpc-ecosystem/grpc-gateway/third_party/googleapis \
+              -I$(go env GOPATH)/pkg/mod \
+              -I$(go env GOPATH)/pkg/mod/github.com/grpc-ecosystem/grpc-gateway@v2.20.0+incompatible \
+              -I$(go env GOPATH)/pkg/mod/github.com/grpc-ecosystem/grpc-gateway@v2.20.0+incompatible/third_party/googleapis \
               --openapiv2_out=./gen \
               --openapiv2_opt=logtostderr=true \
               "$proto"
