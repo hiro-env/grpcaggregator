@@ -37,6 +37,43 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: "14"
+
+      - name: Install OpenAPI Tools
+        run: npm install -g @openapitools/openapi-generator-cli
+
+      - name: Check for proto file changes
+        id: check_files
+        run: |
+          CHANGED_PROTOS=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -E '^proto/.*\.proto$' || true)
+          if [ -n "$CHANGED_PROTOS" ]; then
+            echo "proto_changed=true" >> $GITHUB_OUTPUT
+            echo "changed_files=$CHANGED_PROTOS" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Generate OpenAPI Spec
+        if: steps.check_files.outputs.proto_changed == 'true'
+        run: |
+          mkdir -p gen
+          for proto in ${{ steps.check_files.outputs.changed_files }}; do
+            filename=$(basename "$proto" .proto)
+            openapi-generator-cli generate -i $proto -g openapi -o ./gen/$filename
+            mv ./gen/$filename/openapi.json ./gen/$filename.swagger.json
+            rm -rf ./gen/$filename
+          done
+
+      - name: Commit and push OpenAPI specs
+        if: steps.check_files.outputs.proto_changed == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add gen/*.swagger.json
+          git commit -m "Update OpenAPI json file" || echo "No changes to commit"
+          git push
+
       - name: Authenticate to Google Cloud
         uses: "google-github-actions/auth@v1"
         with:
