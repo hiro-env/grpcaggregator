@@ -97,11 +97,12 @@ jobs:
           sudo mkdir -p /gen
           sudo chown $USER:$USER /gen
 
-          for proto in proto/*.proto; do
+          for proto in ${{ env.changed_files }}; do
             filename=$(basename "$proto" .proto)
             # Generate OpenAPI spec from Proto file
             protoc -I. \
               -Ithird_party/googleapis \
+              -Iproto \
               --openapiv2_out=/gen \
               --openapiv2_opt=logtostderr=true \
               "$proto"
