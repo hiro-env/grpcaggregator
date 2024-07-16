@@ -81,8 +81,9 @@ jobs:
           # Install protoc-gen-openapiv2
           go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@latest
 
-          # Create necessary directories
-          mkdir -p /gen
+          # Create necessary directories with sudo
+          sudo mkdir -p /gen
+          sudo chown $USER:$USER /gen
 
           # Download necessary Google API proto files
           mkdir -p google/api
