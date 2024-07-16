@@ -74,10 +74,11 @@ jobs:
           # Set GOPATH
           echo "GOPATH=$HOME/go" >> $GITHUB_ENV
           echo "$HOME/go/bin" >> $GITHUB_PATH
+          export GOPATH=$HOME/go
+          export PATH=$PATH:$GOPATH/bin
 
           # Install protoc-gen-openapiv2
           go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@latest
-          export PATH=$PATH:$HOME/go/bin
 
           # Download necessary Google API proto files
           mkdir -p google/api
@@ -89,7 +90,6 @@ jobs:
             filename=$(basename "$proto" .proto)
             # Generate OpenAPI spec from Proto file
             protoc -I. \
-              -I$GOPATH/pkg/mod \
               -I$GOPATH/pkg/mod/github.com/grpc-ecosystem/grpc-gateway@v2.20.0+incompatible \
               -I$GOPATH/pkg/mod/github.com/grpc-ecosystem/grpc-gateway@v2.20.0+incompatible/third_party/googleapis \
               --openapiv2_out=./gen \
@@ -158,12 +158,4 @@ jobs:
       - name: Check kubectl version
         run: kubectl version --client
 
-      - name: Deploy to GKE
-        run: |
-          kubectl rollout restart deployment grpc-server
-          kubectl rollout restart deployment grpc-gateway
-
-      - name: Verify deployments
-        run: |
-          kubectl rollout status deployment/grpc-server
-          kubectl rollout status deployment/grpc-gateway
+      - name: Deploy to
