@@ -97,7 +97,7 @@ jobs:
           sudo mkdir -p /gen
           sudo chown $USER:$USER /gen
 
-          for proto in ${{ env.changed_files }}; do
+          for proto in proto/*.proto; do
             filename=$(basename "$proto" .proto)
             # Generate OpenAPI spec from Proto file
             protoc -I. \
