@@ -161,6 +161,10 @@ jobs:
       - name: Generate Frontend API Client
         if: env.proto_changed == 'true'
         run: |
+          # Set Git configuration
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "GitHub Actions"
+
           # Clone frontend repository
           git clone https://${{ secrets.GH_PAT }}@github.com/${{ github.repository_owner }}/${{ env.FRONTEND_REPO }}.git frontend_repo
           cd frontend_repo
@@ -221,7 +225,8 @@ jobs:
             echo "No changes in API client"
           else
             echo "Changes detected in API client"
-            git add .
+            git config --local user.email "github-actions@github.com"
+            git config --local user.name "GitHub Actions"
             git commit -m "Update API client based on new OpenAPI spec"
             git push --set-upstream origin update-api-client-$(date +%Y%m%d%H%M%S)
             
