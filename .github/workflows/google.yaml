@@ -175,24 +175,22 @@ jobs:
             filename=$(basename "$swagger_file" .swagger.json)
             
             # Create a temporary config file
-            cat << EOF > temp_orval_config.js
-          module.exports = {
-            'api-client': {
-              input: '${swagger_file}',
-              output: {
-                mode: 'split',
-                target: './src/api/${filename}',
-                client: 'swr',
-                override: {
-                  mutator: {
-                    path: './src/lib/fetcher.ts',
-                    name: 'fetcher',
+            echo "module.exports = {
+              'api-client': {
+                input: '$swagger_file',
+                output: {
+                  mode: 'split',
+                  target: './src/api/$filename',
+                  client: 'swr',
+                  override: {
+                    mutator: {
+                      path: './src/lib/fetcher.ts',
+                      name: 'fetcher',
+                    },
                   },
                 },
               },
-            },
-          };
-EOF
+            };" > temp_orval_config.js
             
             # Generate API client for this specific file
             npx orval --config ./temp_orval_config.js
