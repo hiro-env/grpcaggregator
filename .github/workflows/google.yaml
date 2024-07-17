@@ -206,6 +206,9 @@ jobs:
             
             # Remove the temporary config file
             rm temp_orval_config.js
+
+            # Add generated files to git
+            git add src/api/$filename
           done
 
           # Debug: List generated files
@@ -214,7 +217,7 @@ jobs:
 
           # Check if there are changes
           git status
-          if git diff --exit-code; then
+          if git diff --cached --exit-code; then
             echo "No changes in API client"
           else
             echo "Changes detected in API client"
