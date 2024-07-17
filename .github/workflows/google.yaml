@@ -106,9 +106,8 @@ jobs:
           # Run go mod tidy to ensure all dependencies are downloaded
           go mod tidy
 
-          # Create necessary directories with sudo
-          sudo mkdir -p /gen
-          sudo chown $USER:$USER /gen
+          # Create necessary directories
+          mkdir -p ./gen
 
           for proto in ${{ env.changed_files }}; do
             filename=$(basename "$proto" .proto)
@@ -118,7 +117,7 @@ jobs:
             protoc -I. \
               -Ithird_party/googleapis \
               -Iproto \
-              --openapiv2_out=/gen \
+              --openapiv2_out=./gen \
               --openapiv2_opt=logtostderr=true \
               --openapiv2_opt=allow_merge=true \
               --openapiv2_opt=merge_file_name=${filename} \
@@ -129,20 +128,20 @@ jobs:
               exit 1
             fi
 
-            if [ -f "/gen/${filename}.swagger.json" ]; then
-              echo "Successfully generated /gen/${filename}.swagger.json"
+            if [ -f "./gen/${filename}.swagger.json" ]; then
+              echo "Successfully generated ./gen/${filename}.swagger.json"
               # Now use openapi-generator-cli with the generated OpenAPI spec
               openapi-generator-cli generate \
-                -i /gen/${filename}.swagger.json \
+                -i ./gen/${filename}.swagger.json \
                 -g openapi \
-                -o /gen/${filename}
+                -o ./gen/${filename}
               
-              mv /gen/${filename}/openapi.json /gen/${filename}.swagger.json
-              rm -rf /gen/${filename}
+              mv ./gen/${filename}/openapi.json ./gen/${filename}.swagger.json
+              rm -rf ./gen/${filename}
             else
-              echo "Failed to generate /gen/${filename}.swagger.json"
-              echo "Contents of /gen directory:"
-              ls -la /gen
+              echo "Failed to generate ./gen/${filename}.swagger.json"
+              echo "Contents of ./gen directory:"
+              ls -la ./gen
               echo "Contents of proto directory:"
               ls -la proto
               exit 1
@@ -154,7 +153,7 @@ jobs:
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add /gen/*.swagger.json
+          git add ./gen/*.swagger.json
           git commit -m "Update OpenAPI json file" || echo "No changes to commit"
           git push
 
