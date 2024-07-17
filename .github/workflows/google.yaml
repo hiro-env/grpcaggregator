@@ -178,10 +178,10 @@ jobs:
             cat << EOF > temp_orval_config.js
               module.exports = {
                 'api-client': {
-                  input: '$swagger_file',
+                  input: '${swagger_file}',
                   output: {
                     mode: 'split',
-                    target: './src/api/$filename',
+                    target: './src/api/${filename}',
                     client: 'swr',
                     override: {
                       mutator: {
