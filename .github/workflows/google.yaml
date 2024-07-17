@@ -174,8 +174,25 @@ jobs:
           for swagger_file in ../gen/*.swagger.json; do
             filename=$(basename "$swagger_file" .swagger.json)
             
-            # Generate API client for this specific file using the config
-            npx orval --input "$swagger_file" --output "./src/api/$filename" --config ./orval.config.js
+            # Generate API client for this specific file
+            npx orval --input "$swagger_file" --output "./src/api/$filename" --config <(echo "
+              module.exports = {
+                'api-client': {
+                  input: '$swagger_file',
+                  output: {
+                    mode: 'split',
+                    target: './src/api/$filename',
+                    client: 'swr',
+                    override: {
+                      mutator: {
+                        path: './src/lib/fetcher.ts',
+                        name: 'fetcher',
+                      },
+                    },
+                  },
+                },
+              };
+            ")
           done
 
           # Check if there are changes
