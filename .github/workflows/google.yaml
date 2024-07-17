@@ -170,9 +170,18 @@ jobs:
           # Create a new branch
           git switch -c update-api-client-$(date +%Y%m%d%H%M%S)
 
+          # Debug: List contents of parent directory
+          echo "Contents of parent directory:"
+          ls -la ..
+
+          # Debug: List contents of gen directory
+          echo "Contents of ../gen directory:"
+          ls -la ../gen
+
           # Process each changed Swagger file
           for swagger_file in ../gen/*.swagger.json; do
             filename=$(basename "$swagger_file" .swagger.json)
+            echo "Processing $swagger_file"
             
             # Create a temporary config file
             echo "module.exports = {
@@ -199,8 +208,13 @@ jobs:
             rm temp_orval_config.js
           done
 
+          # Debug: List generated files
+          echo "Contents of src/api directory:"
+          ls -la src/api
+
           # Check if there are changes
-          if git diff --quiet; then
+          git status
+          if git diff --exit-code; then
             echo "No changes in API client"
           else
             echo "Changes detected in API client"
