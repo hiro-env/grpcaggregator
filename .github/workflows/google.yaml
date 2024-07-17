@@ -175,7 +175,7 @@ jobs:
             filename=$(basename "$swagger_file" .swagger.json)
             
             # Generate API client for this specific file using the config
-            npx orval --input "$swagger_file" --config ./orval.config.js
+            npx orval --input "$swagger_file" --output "./src/api/$filename" --config ./orval.config.js
           done
 
           # Check if there are changes
