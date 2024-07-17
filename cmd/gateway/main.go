@@ -11,6 +11,23 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
+func allowCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// デバッグ用に一旦全て許可する
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+		// For preflight requests
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
+
 func main() {
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
@@ -23,8 +40,10 @@ func main() {
 		log.Fatalf("Failed to register gateway: %v", err)
 	}
 
+	corsMux := allowCORS(mux)
+
 	log.Println("Starting HTTP server on :8080")
-	if err := http.ListenAndServe(":8080", mux); err != nil {
+	if err := http.ListenAndServe(":8080", corsMux); err != nil {
 		log.Fatalf("Failed to serve HTTP: %v", err)
 	}
 }
