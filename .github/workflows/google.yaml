@@ -174,8 +174,8 @@ jobs:
           for swagger_file in ../gen/*.swagger.json; do
             filename=$(basename "$swagger_file" .swagger.json)
             
-            # Generate API client for this specific file
-            npx orval --input "$swagger_file" --output "./src/api/$filename" --config <(echo "
+          # Create a temporary config file
+            cat << EOF > temp_orval_config.js
               module.exports = {
                 'api-client': {
                   input: '$swagger_file',
@@ -192,7 +192,13 @@ jobs:
                   },
                 },
               };
-            ")
+            EOF
+            
+            # Generate API client for this specific file
+            npx orval --config ./temp_orval_config.js
+            
+            # Remove the temporary config file
+            rm temp_orval_config.js
           done
 
           # Check if there are changes
