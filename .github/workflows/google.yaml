@@ -73,6 +73,12 @@ jobs:
           echo "export PATH=$PATH:/usr/local/go/bin" >> $GITHUB_ENV
           export PATH=$PATH:/usr/local/go/bin
 
+      - name: Debug Go installation
+        run: |
+          go version
+          echo $PATH
+          echo $GOPATH
+
       - name: Generate OpenAPI Spec
         if: env.proto_changed == 'true'
         run: |
@@ -87,6 +93,13 @@ jobs:
           export PATH=$PATH:$HOME/go/bin
           export GO111MODULE=on
 
+          # Debug environment
+          echo "GOPATH: $GOPATH"
+          echo "PATH: $PATH"
+          go version
+          which protoc
+          protoc --version
+
           # Install protoc-gen-openapiv2
           go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@latest
 
@@ -99,15 +112,25 @@ jobs:
 
           for proto in ${{ env.changed_files }}; do
             filename=$(basename "$proto" .proto)
+            echo "Generating OpenAPI spec for $proto"
+            
             # Generate OpenAPI spec from Proto file
             protoc -I. \
               -Ithird_party/googleapis \
               -Iproto \
               --openapiv2_out=/gen \
               --openapiv2_opt=logtostderr=true \
+              --openapiv2_opt=allow_merge=true \
+              --openapiv2_opt=merge_file_name=${filename} \
               "$proto"
+            
+            if [ $? -ne 0 ]; then
+              echo "Error occurred while generating OpenAPI spec for $proto"
+              exit 1
+            fi
 
             if [ -f "/gen/${filename}.swagger.json" ]; then
+              echo "Successfully generated /gen/${filename}.swagger.json"
               # Now use openapi-generator-cli with the generated OpenAPI spec
               openapi-generator-cli generate \
                 -i /gen/${filename}.swagger.json \
@@ -118,6 +141,10 @@ jobs:
               rm -rf /gen/${filename}
             else
               echo "Failed to generate /gen/${filename}.swagger.json"
+              echo "Contents of /gen directory:"
+              ls -la /gen
+              echo "Contents of proto directory:"
+              ls -la proto
               exit 1
             fi
           done
