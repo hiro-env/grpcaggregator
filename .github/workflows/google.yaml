@@ -172,7 +172,8 @@ jobs:
           git fetch
           git switch gcp
           # Create a new branch
-          git switch -c update-api-client-$(date +%Y%m%d%H%M%S)
+          NEW_BRANCH="update-api-client-$(date +%Y%m%d%H%M%S)"
+          git switch -c $NEW_BRANCH
 
           # Debug: List contents of parent directory
           echo "Contents of parent directory:"
@@ -225,13 +226,12 @@ jobs:
             echo "No changes in API client"
           else
             echo "Changes detected in API client"
-            git config --local user.email "github-actions@github.com"
-            git config --local user.name "GitHub Actions"
             git commit -m "Update API client based on new OpenAPI spec"
-            git push --set-upstream origin update-api-client-$(date +%Y%m%d%H%M%S)
+            git push --set-upstream origin $NEW_BRANCH
             
             # Set flag to create PR
             echo "create_pr=true" >> $GITHUB_ENV
+            echo "pr_branch=$NEW_BRANCH" >> $GITHUB_ENV
           fi
 
       - name: Create Pull Request for Frontend
@@ -246,7 +246,7 @@ jobs:
             -d '{
               "title": "Update API Client",
               "body": "swagger.jsonからのmoduleの自動生成",
-              "head": "update-api-client-'$(date +%Y%m%d%H%M%S)'",
+              "head": "${{ env.pr_branch }}",
               "base": "gcp"
             }')
 
