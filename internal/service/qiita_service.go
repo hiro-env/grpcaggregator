@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/hiro-env/grpcaggregator/pkg/qiita"
+	statsig "github.com/statsig-io/go-sdk"
 )
 
 type QiitaService struct {
@@ -25,10 +26,26 @@ type qiitaEntry struct {
 	Published string `xml:"published"`
 }
 
+func NewQiitaService() *QiitaService {
+	return &QiitaService{}
+}
+
 func (s *QiitaService) SearchArticles(ctx context.Context, req *qiita.SearchRequest) (*qiita.SearchResponse, error) {
+	user := statsig.User{
+		// 一旦簡略化してセットしておく
+		UserID: "all_user",
+	}
+
+	config := statsig.GetExperiment(user, "abtest")
+	isEnable := config.GetBool("is_enable", false)
+
 	query := req.Query
 	if query == "" {
 		// TODO Datadog連携
+	}
+
+	if isEnable {
+		query = "qiita"
 	}
 
 	feedURL := fmt.Sprintf("https://qiita.com/tags/%s/feed", query)
