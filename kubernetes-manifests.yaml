@@ -18,6 +18,12 @@ spec:
           imagePullPolicy: Always
           ports:
             - containerPort: 50051
+          env:
+            - name: STATSIG_SERVER_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: grpc-secrets
+                  key: STATSIG_SERVER_SECRET
 ---
 apiVersion: v1
 kind: Service
