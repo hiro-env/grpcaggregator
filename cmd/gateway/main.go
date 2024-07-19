@@ -10,6 +10,7 @@ import (
 	"github.com/hiro-env/grpcaggregator/pkg/qiita"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	grpctrace "gopkg.in/DataDog/dd-trace-go.v1/contrib/google.golang.org/grpc"
 	httptrace "gopkg.in/DataDog/dd-trace-go.v1/contrib/net/http"
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 )
@@ -23,6 +24,7 @@ func main() {
 		tracer.WithAgentAddr(agentHost+":"+agentPort),
 		tracer.WithService("grpc-gateway"),
 		tracer.WithEnv("develop"),
+		tracer.WithAnalyticsRate(1.0),
 	)
 	defer tracer.Stop()
 
@@ -31,7 +33,11 @@ func main() {
 	defer cancel()
 
 	mux := runtime.NewServeMux()
-	opts := []grpc.DialOption{grpc.WithTransportCredentials(insecure.NewCredentials())}
+	opts := []grpc.DialOption{
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithUnaryInterceptor(grpctrace.UnaryClientInterceptor()),
+		grpc.WithStreamInterceptor(grpctrace.StreamClientInterceptor()),
+	}
 	err := qiita.RegisterQiitaServiceHandlerFromEndpoint(ctx, mux, "grpc-server:50051", opts)
 	if err != nil {
 		log.Fatalf("Failed to register gateway: %v", err)

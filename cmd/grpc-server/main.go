@@ -39,6 +39,7 @@ func main() {
 	// インターセプターの導入
 	s := grpc.NewServer(
 		grpc.UnaryInterceptor(grpctrace.UnaryServerInterceptor()),
+		grpc.StreamInterceptor(grpctrace.StreamServerInterceptor()),
 	)
 
 	qiitaService := service.NewQiitaService()
