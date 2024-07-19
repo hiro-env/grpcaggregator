@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
 	"github.com/hiro-env/grpcaggregator/pkg/qiita"
@@ -14,7 +15,12 @@ import (
 )
 
 func main() {
+	// DDエージェントのホストを環境変数から取得
+	agentHost := os.Getenv("DD_AGENT_HOST")
+	agentPort := os.Getenv("DD_TRACE_AGENT_PORT")
+
 	tracer.Start(
+		tracer.WithAgentAddr(agentHost+":"+agentPort),
 		tracer.WithService("grpc-gateway"),
 		tracer.WithEnv("develop"),
 	)

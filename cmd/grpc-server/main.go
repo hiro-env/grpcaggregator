@@ -14,7 +14,11 @@ import (
 )
 
 func main() {
+	agentHost := os.Getenv("DD_AGENT_HOST")
+	agentPort := os.Getenv("DD_TRACE_AGENT_PORT")
+
 	tracer.Start(
+		tracer.WithAgentAddr(agentHost+":"+agentPort),
 		tracer.WithService("grpc-server"),
 		tracer.WithEnv("develop"),
 	)
