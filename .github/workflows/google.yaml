@@ -299,5 +299,6 @@ jobs:
 
       - name: Verify deployments
         run: |
+          kubectl apply -f kubernetes/kubernetes-manifests.yaml
           kubectl rollout status deployment/grpc-server
           kubectl rollout status deployment/grpc-gateway
