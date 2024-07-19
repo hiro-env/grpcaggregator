@@ -9,9 +9,17 @@ import (
 	"github.com/hiro-env/grpcaggregator/pkg/qiita"
 	statsig "github.com/statsig-io/go-sdk"
 	"google.golang.org/grpc"
+	grpctrace "gopkg.in/DataDog/dd-trace-go.v1/contrib/google.golang.org/grpc"
+	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
 )
 
 func main() {
+	tracer.Start(
+		tracer.WithService("grpc-server"),
+		tracer.WithEnv("develop"),
+	)
+	defer tracer.Stop()
+
 	statsigKey := os.Getenv("STATSIG_SERVER_SECRET")
 	if statsigKey == "" {
 		log.Fatal("statsig server secret is not set!")
@@ -24,7 +32,11 @@ func main() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
-	s := grpc.NewServer()
+	// インターセプターの導入
+	s := grpc.NewServer(
+		grpc.UnaryInterceptor(grpctrace.UnaryServerInterceptor()),
+	)
+
 	qiitaService := service.NewQiitaService()
 	qiita.RegisterQiitaServiceServer(s, qiitaService)
 
