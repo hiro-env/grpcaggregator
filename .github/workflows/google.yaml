@@ -1,0 +1,304 @@
+# This workflow will build a docker container, publish it to Google Container Registry, and deploy it to GKE when there is a push to the "main" branch.
+#
+# To configure this workflow:
+#
+# 1. Ensure that your repository contains the necessary configuration for your Google Kubernetes Engine cluster, including deployment.yml, kustomization.yml, service.yml, etc.
+#
+# 2. Create and configure a Workload Identity Provider for GitHub (https://github.com/google-github-actions/auth#setting-up-workload-identity-federation)
+#
+# 3. Change the values for the GAR_LOCATION, GKE_ZONE, GKE_CLUSTER, IMAGE, REPOSITORY and DEPLOYMENT_NAME environment variables (below).
+#
+# For more support on how to run the workflow, please visit https://github.com/google-github-actions/setup-gcloud/tree/master/example-workflows/gke-kustomize
+
+name: Build and Deploy to GKE
+
+on:
+  push:
+    branches: [gke]
+  pull_request:
+    types: [closed]
+    branches: [gke]
+
+env:
+  GKE_CLUSTER: ${{ secrets.GKE_CLUSTER }}
+  GKE_ZONE: ${{ secrets.GKE_ZONE }}
+  DOCKER_REPO: docker-repo
+  GRPC_SERVER_IMAGE: grpc-server
+  GRPC_GATEWAY_IMAGE: grpc-gateway
+  USE_GKE_GCLOUD_AUTH_PLUGIN: True
+  FRONTEND_REPO: aggregator-web
+
+jobs:
+  build-and-deploy:
+    if: github.event.pull_request.merged == true || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: "write"
+      id-token: "write"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: "16"
+
+      - name: Install OpenAPI Tools
+        run: npm install -g @openapitools/openapi-generator-cli
+
+      - name: Check for proto file changes
+        id: check_files
+        run: |
+          CHANGED_PROTOS=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep -E '^proto/.*\.proto$' || true)
+          if [ -n "$CHANGED_PROTOS" ]; then
+            echo "proto_changed=true" >> $GITHUB_ENV
+            echo "changed_files=$CHANGED_PROTOS" >> $GITHUB_ENV
+          fi
+
+      - name: Debug Check Files Output
+        run: |
+          echo "proto_changed=${{ env.proto_changed }}"
+          echo "changed_files=${{ env.changed_files }}"
+
+      - name: Uninstall old Go
+        run: |
+          sudo apt-get remove -y golang-go
+          sudo apt-get remove -y golang-src
+
+      - name: Install Go
+        run: |
+          curl -LO https://golang.org/dl/go1.22.0.linux-amd64.tar.gz
+          sudo tar -C /usr/local -xzf go1.22.0.linux-amd64.tar.gz
+          echo "export PATH=$PATH:/usr/local/go/bin" >> $GITHUB_ENV
+          export PATH=$PATH:/usr/local/go/bin
+
+      - name: Debug Go installation
+        run: |
+          go version
+          echo $PATH
+          echo $GOPATH
+
+      - name: Generate OpenAPI Spec
+        if: env.proto_changed == 'true'
+        run: |
+          # Install protoc
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+
+          # Set GOPATH
+          echo "GOPATH=$HOME/go" >> $GITHUB_ENV
+          echo "$HOME/go/bin" >> $GITHUB_PATH
+          export GOPATH=$HOME/go
+          export PATH=$PATH:$HOME/go/bin
+          export GO111MODULE=on
+
+          # Debug environment
+          echo "GOPATH: $GOPATH"
+          echo "PATH: $PATH"
+          go version
+          which protoc
+          protoc --version
+
+          # Install protoc-gen-openapiv2
+          go install github.com/grpc-ecosystem/grpc-gateway/v2/protoc-gen-openapiv2@latest
+
+          # Run go mod tidy to ensure all dependencies are downloaded
+          go mod tidy
+
+          # Create necessary directories
+          mkdir -p ./gen
+
+          for proto in ${{ env.changed_files }}; do
+            filename=$(basename "$proto" .proto)
+            echo "Generating OpenAPI spec for $proto"
+            
+            # Generate OpenAPI spec from Proto file
+            protoc -I. \
+              -Ithird_party/googleapis \
+              -Iproto \
+              --openapiv2_out=./gen \
+              --openapiv2_opt=logtostderr=true \
+              --openapiv2_opt=allow_merge=true \
+              --openapiv2_opt=merge_file_name=${filename} \
+              "$proto"
+            
+            if [ $? -ne 0 ]; then
+              echo "Error occurred while generating OpenAPI spec for $proto"
+              exit 1
+            fi
+
+            if [ -f "./gen/${filename}.swagger.json" ]; then
+              echo "Successfully generated ./gen/${filename}.swagger.json"
+              # Now use openapi-generator-cli with the generated OpenAPI spec
+              openapi-generator-cli generate \
+                -i ./gen/${filename}.swagger.json \
+                -g openapi \
+                -o ./gen/${filename}
+              
+              mv ./gen/${filename}/openapi.json ./gen/${filename}.swagger.json
+              rm -rf ./gen/${filename}
+            else
+              echo "Failed to generate ./gen/${filename}.swagger.json"
+              echo "Contents of ./gen directory:"
+              ls -la ./gen
+              echo "Contents of proto directory:"
+              ls -la proto
+              exit 1
+            fi
+          done
+
+      - name: Commit and push OpenAPI specs
+        if: env.proto_changed == 'true'
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add ./gen/*.swagger.json
+          git commit -m "Update OpenAPI json file" || echo "No changes to commit"
+          git push
+
+      - name: Generate Frontend API Client
+        if: env.proto_changed == 'true'
+        run: |
+          # Set Git configuration
+          git config --global user.email "github-actions@github.com"
+          git config --global user.name "GitHub Actions"
+
+          # Clone frontend repository
+          git clone https://${{ secrets.GH_PAT }}@github.com/${{ github.repository_owner }}/${{ env.FRONTEND_REPO }}.git frontend_repo
+          cd frontend_repo
+
+          git fetch
+          git switch gcp
+          # Create a new branch
+          NEW_BRANCH="update-api-client-$(date +%Y%m%d%H%M%S)"
+          git switch -c $NEW_BRANCH
+
+          # Debug: List contents of parent directory
+          echo "Contents of parent directory:"
+          ls -la ..
+
+          # Debug: List contents of gen directory
+          echo "Contents of ../gen directory:"
+          ls -la ../gen
+
+          # Process each changed Swagger file
+          for swagger_file in ../gen/*.swagger.json; do
+            filename=$(basename "$swagger_file" .swagger.json)
+            echo "Processing $swagger_file"
+            
+            # Create a temporary config file
+            echo "module.exports = {
+              'api-client': {
+                input: '$swagger_file',
+                output: {
+                  mode: 'split',
+                  target: './src/api/$filename',
+                  client: 'swr',
+                  override: {
+                    mutator: {
+                      path: './src/lib/fetcher.ts',
+                      name: 'fetcher',
+                    },
+                  },
+                },
+              },
+            };" > temp_orval_config.js
+            
+            # Generate API client for this specific file
+            npx orval --config ./temp_orval_config.js
+            
+            # Remove the temporary config file
+            rm temp_orval_config.js
+
+            # Add generated files to git
+            git add src/api/$filename
+          done
+
+          # Debug: List generated files
+          echo "Contents of src/api directory:"
+          ls -la src/api
+
+          # Check if there are changes
+          git status
+          if git diff --cached --exit-code; then
+            echo "No changes in API client"
+          else
+            echo "Changes detected in API client"
+            git commit -m "Update API client based on new OpenAPI spec"
+            git push --set-upstream origin $NEW_BRANCH
+            
+            # Set flag to create PR
+            echo "create_pr=true" >> $GITHUB_ENV
+            echo "pr_branch=$NEW_BRANCH" >> $GITHUB_ENV
+          fi
+
+      - name: Create Pull Request for Frontend
+        if: env.create_pr == 'true'
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          PR_RESPONSE=$(curl -X POST \
+            -H "Authorization: token $GH_PAT" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository_owner }}/${{ env.FRONTEND_REPO }}/pulls \
+            -d '{
+              "title": "Update API Client",
+              "body": "swagger.jsonからのmoduleの自動生成",
+              "head": "${{ env.pr_branch }}",
+              "base": "gcp"
+            }')
+
+          echo "Pull Request created: $(echo $PR_RESPONSE | jq -r .html_url)"
+
+      - name: Authenticate to Google Cloud
+        uses: "google-github-actions/auth@v1"
+        with:
+          workload_identity_provider: "projects/${{ secrets.GCP_PROJECT_NUMBER }}/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-provider"
+          service_account: "${{ secrets.GCP_SA_EMAIL }}"
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+
+      - name: Configure Docker
+        run: gcloud auth configure-docker asia-northeast1-docker.pkg.dev
+
+      - name: Build and Push gRPC Server Image
+        run: |
+          docker build -t asia-northeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/$DOCKER_REPO/$GRPC_SERVER_IMAGE:latest -f ./cmd/grpc-server/Dockerfile .
+          docker push asia-northeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/$DOCKER_REPO/$GRPC_SERVER_IMAGE:latest
+
+      - name: Build and Push gRPC Gateway Image
+        run: |
+          docker build -t asia-northeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/$DOCKER_REPO/$GRPC_GATEWAY_IMAGE:latest -f ./cmd/gateway/Dockerfile .
+          docker push asia-northeast1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/$DOCKER_REPO/$GRPC_GATEWAY_IMAGE:latest
+
+      ## gke-gcloud-auth-pluginをインストール
+      - name: Install GKE Auth Plugin
+        run: |
+          gcloud components install gke-gcloud-auth-plugin
+          echo "export USE_GKE_GCLOUD_AUTH_PLUGIN=True" >> $GITHUB_ENV
+
+      - name: Get GKE Credentials
+        run: gcloud container clusters get-credentials $GKE_CLUSTER --zone $GKE_ZONE --project ${{ secrets.GCP_PROJECT_ID }}
+
+      ## デバッグ用
+      - name: Check gcloud version
+        run: gcloud version
+
+      - name: Check kubectl version
+        run: kubectl version --client
+
+      - name: Deploy to GKE
+        run: |
+          kubectl rollout restart deployment grpc-server
+          kubectl rollout restart deployment grpc-gateway
+
+      - name: Verify deployments
+        run: |
+          kubectl apply -f kubernetes/kubernetes-manifests.yaml
+          kubectl rollout status deployment/grpc-server
+          kubectl rollout status deployment/grpc-gateway

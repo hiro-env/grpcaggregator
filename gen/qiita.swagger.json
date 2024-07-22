@@ -1,0 +1,121 @@
+{
+  "openapi" : "3.0.1",
+  "info" : {
+    "title" : "proto/qiita.proto",
+    "version" : "version not set"
+  },
+  "servers" : [ {
+    "url" : "/"
+  } ],
+  "tags" : [ {
+    "name" : "QiitaService"
+  } ],
+  "paths" : {
+    "/qiita/articles" : {
+      "get" : {
+        "operationId" : "QiitaService_SearchArticles",
+        "parameters" : [ {
+          "description" : "ユーザーからの検索ワード",
+          "in" : "query",
+          "name" : "query",
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/qiitaSearchResponse"
+                }
+              }
+            },
+            "description" : "A successful response."
+          },
+          "default" : {
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/rpcStatus"
+                }
+              }
+            },
+            "description" : "An unexpected error response."
+          }
+        },
+        "summary" : "検索ワードに基づいて記事を検索するRPC",
+        "tags" : [ "QiitaService" ]
+      }
+    }
+  },
+  "components" : {
+    "schemas" : {
+      "protobufAny" : {
+        "additionalProperties" : {
+          "type" : "object"
+        },
+        "properties" : {
+          "@type" : {
+            "type" : "string"
+          }
+        },
+        "type" : "object"
+      },
+      "qiitaArticle" : {
+        "properties" : {
+          "title" : {
+            "title" : "記事のタイトル",
+            "type" : "string"
+          },
+          "author" : {
+            "title" : "著者名",
+            "type" : "string"
+          },
+          "url" : {
+            "title" : "記事のURL",
+            "type" : "string"
+          },
+          "publishedAt" : {
+            "title" : "発行日",
+            "type" : "string"
+          }
+        },
+        "title" : "記事情報",
+        "type" : "object"
+      },
+      "qiitaSearchResponse" : {
+        "properties" : {
+          "articles" : {
+            "items" : {
+              "$ref" : "#/components/schemas/qiitaArticle"
+            },
+            "title" : "記事のリスト",
+            "type" : "array"
+          }
+        },
+        "title" : "検索レスポンス",
+        "type" : "object"
+      },
+      "rpcStatus" : {
+        "properties" : {
+          "code" : {
+            "format" : "int32",
+            "type" : "integer"
+          },
+          "message" : {
+            "type" : "string"
+          },
+          "details" : {
+            "items" : {
+              "$ref" : "#/components/schemas/protobufAny"
+            },
+            "type" : "array"
+          }
+        },
+        "type" : "object"
+      }
+    }
+  },
+  "x-original-swagger-version" : "2.0"
+}

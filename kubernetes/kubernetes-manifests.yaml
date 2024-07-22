@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grpc-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grpc-server
+  template:
+    metadata:
+      labels:
+        app: grpc-server
+    spec:
+      containers:
+        - name: grpc-server
+          image: asia-northeast1-docker.pkg.dev/grpcaggregator/docker-repo/grpc-server:latest # Artifact Registry 本来は環境変数やSecretを利用する方がベター
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 50051
+          env:
+            - name: STATSIG_SERVER_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: grpc-secrets
+                  key: STATSIG_SERVER_SECRET
+            - name: DD_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: DD_TRACE_AGENT_PORT
+              value: "8126"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grpc-server # サービスディスカバリーで使用されるDNS名になる（grpc-gatewayから接続する際に使われる)
+spec:
+  selector:
+    app: grpc-server
+  ports:
+    - protocol: TCP
+      port: 50051
+      targetPort: 50051
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grpc-gateway
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grpc-gateway
+  template:
+    metadata:
+      labels:
+        app: grpc-gateway
+    spec:
+      containers:
+        - name: grpc-gateway
+          image: asia-northeast1-docker.pkg.dev/grpcaggregator/docker-repo/grpc-gateway:latest # Artifact Registry 本来は環境変数やSecretを利用する方がベター
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DD_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+            - name: DD_TRACE_AGENT_PORT
+              value: "8126"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grpc-gateway
+spec:
+  selector:
+    app: grpc-gateway
+  ports:
+    - protocol: TCP
+      port: 80 # HTTPのシステムポートに変更しておく
+      targetPort: 8080
+  type: LoadBalancer
